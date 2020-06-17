@@ -2,11 +2,13 @@ import pandas as pd
 import numpy as np
 import geopandas
 import folium
-from folium.plugins import TimeSliderChoropleth
+from folium.plugins import TimeSliderChoropleth, HeatMapWithTime
 import matplotlib
 import datetime
 import colorsys
 import config
+
+RESULT_FOLDER = config.RESULT_FOLDER
 
 geojsonData_1880 = geopandas.read_file(config.GEOJSON_1880)
 geojsonData_1914 = geopandas.read_file(config.GEOJSON_1914)
@@ -35,28 +37,36 @@ if __name__ == "__main__":
     a = geojsonData_1945.head(10)
     colors = create_rgb_colors(5)
 
-    # darkseagreen, green, red, yellow, pink
-    styles = [{'fillColor': '#FF69B4', 'color': '#FF69B4'},
-              {'fillColor': '#228B22', 'color': '#228B22'},
-              {'fillColor': '#FF3030', 'color': '#FF3030'},
-              {'fillColor': '#EEC900', 'color': '#EEC900'},
-              {'fillColor': '#C1FFC1', 'color': '#C1FFC1'}]
-    """
-    styles = []
-    for c in colors:
-        hex_color = '#%02x%02x%02x' % c
-        style = {'fillColor': str(hex_color), 'color:': str(hex_color)}
-        styles.append(style)
-    """
+    styles = [{'fillColor': '#FFBA08', 'color': '#FFBA08'},
+              {'fillColor': '#FAA307', 'color': '#FAA307'},
+              {'fillColor': '#F48C06', 'color': '#F48C06'},
+              {'fillColor': '#E85D04', 'color': '#E85D04'},
+              {'fillColor': '#DC2F02', 'color': '#DC2F02'},
+              {'fillColor': '#D00000', 'color': '#D00000'},
+              {'fillColor': '#9D0208', 'color': '#9D0208'},
+              {'fillColor': '#6A040F', 'color': '#6A040F'},
+              {'fillColor': '#370617', 'color': '#370617'},
+              {'fillColor': '#03071E', 'color': '#03071E'}
+              ]
 
     now = datetime.datetime.now()
     m = folium.Map([41, 12], tiles='cartodbpositron', zoom_start=3)
 
-    folium.GeoJson(geojsonData_1880, name='1880', style_function=lambda x: styles[0], show=False).add_to(m)
-    folium.GeoJson(geojsonData_1914, name='1914', style_function=lambda x: styles[1], show=False).add_to(m)
-    folium.GeoJson(geojsonData_1920, name='1920', style_function=lambda x: styles[2], show=False).add_to(m)
-    folium.GeoJson(geojsonData_1938, name='1938', style_function=lambda x: styles[3], show=False).add_to(m)
-    folium.GeoJson(geojsonData_1945, name='1945', style_function=lambda x: styles[4], show=False).add_to(m)
-    folium.LayerControl().add_to(m)
+    # folium.LatLngPopup().add_to(m)
 
-    m.save('morphoWorld.html')
+    folium.GeoJson(geojsonData_1880, name='1880', style_function=lambda x: styles[0], show=False,
+                   tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY'])).add_to(m)
+    folium.GeoJson(geojsonData_1914, name='1914', style_function=lambda x: styles[1], show=False,
+                   tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY'])).add_to(m)
+    folium.GeoJson(geojsonData_1920, name='1920', style_function=lambda x: styles[2], show=False,
+                   tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY'])).add_to(m)
+    folium.GeoJson(geojsonData_1938, name='1938', style_function=lambda x: styles[3], show=False,
+                   tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY'])).add_to(m)
+    folium.GeoJson(geojsonData_1945, name='1945', style_function=lambda x: styles[4], show=False,
+                   tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY'])).add_to(m)
+
+    folium.LayerControl(collapsed=False).add_to(m)
+
+    output_path = RESULT_FOLDER + '/morphoWorld.html'
+    m.save(output_path)
+
