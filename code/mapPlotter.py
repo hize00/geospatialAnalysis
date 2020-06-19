@@ -6,6 +6,7 @@ import config
 
 RESULT_FOLDER = config.RESULT_FOLDER
 
+geojsonData_2000bc = geopandas.read_file(config.GEOJSON_2000BC)
 geojsonData_323bc = geopandas.read_file(config.GEOJSON_323BC)
 geojsonData_200bc = geopandas.read_file(config.GEOJSON_200BC)
 geojsonData_1bc = geopandas.read_file(config.GEOJSON_1BC)
@@ -25,7 +26,8 @@ geojsonData_1938 = geopandas.read_file(config.GEOJSON_1938)
 geojsonData_1945 = geopandas.read_file(config.GEOJSON_1945)
 geojsonData_1994 = geopandas.read_file(config.GEOJSON_1994)
 
-GEOJSONS = {'323BC': geojsonData_323bc,
+GEOJSONS = {'2000BC': geojsonData_2000bc,
+            '323BC': geojsonData_323bc,
             '200BC': geojsonData_200bc,
             '0': geojsonData_1bc,
             '400': geojsonData_400,
@@ -56,7 +58,7 @@ if __name__ == "__main__":
         # Palettes: blue - red - green
         colors = ['#80ffdb', '#72efdd', '#64dfdf', '#56cfe1', '#48bfe3', '#4ea8de', '#5390d9', '#5e60ce', '#6930c3', '#7400b8',
                   '#ffff3f', '#eeef20', '#ffba08', '#faa307', '#f48c06', '#e85d04', '#dc2f02', '#d00000', '#9d0208', '#6a040f',
-                   '#dddf00', '#d4d700', '#bfd200', '#aacc00', '#80b918', '#55a630', '#2b9348', '#007f5f']
+                  '#dddf00', '#d4d700', '#bfd200', '#aacc00', '#80b918', '#55a630', '#2b9348', '#007f5f']
         styles = []
         for c in colors:
             style = {'fillColor': c, 'color': c}
@@ -72,11 +74,11 @@ if __name__ == "__main__":
 
         for idx, key in enumerate(GEOJSONS_SORTED):
             color_idx = simple_rounding(delta_idx_color * idx)
-            if color_idx >= len(GEOJSONS):
+            if color_idx >= len(colors):
                 color_idx = idx
             styleColor = styles[color_idx]
             # careful about late binding
-            layer = folium.GeoJson(GEOJSONS[key], name=key, style_function=lambda x, color=styleColor: color, show=False,
+            layer = folium.GeoJson(GEOJSONS[key], name=key, style_function=lambda x, styleColor=styleColor: styleColor, show=False,
                                    tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY']))
             layer.add_to(m)
             print('Added layer ' + key + ' with color ' + colors[color_idx])

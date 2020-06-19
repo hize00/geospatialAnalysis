@@ -2,6 +2,7 @@ EARTH_RADIUS = 6371
 
 RESULT_FOLDER = '../results'
 
+GEOJSON_2000BC = '../data/2000bc.geojson'
 GEOJSON_1000BC = '../data/1000bc.geojson'
 GEOJSON_323BC = '../data/323bc.geojson'
 GEOJSON_200BC = '../data/200bc.geojson'
