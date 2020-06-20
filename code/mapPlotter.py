@@ -46,6 +46,7 @@ GEOJSONS = {'2000BC': geojsonData_2000bc,
             '1994': geojsonData_1994}
 
 GEOJSONS_SORTED = sorted(GEOJSONS, key=lambda x: int(x) if 'BC' not in x else int(x.replace('BC', ''))*-1)
+# GEOJSONS_SORTED = sorted(GEOJSONS, key=lambda x: int(x))
 
 
 def simple_rounding(x):
@@ -70,7 +71,19 @@ if __name__ == "__main__":
         else:
             print("WARNING: you are trying to plot a higher number of maps with respect to the number of colors provided. Some colors will be repeated")
 
-        m = folium.Map([41, 12], tiles='cartodbpositron', zoom_start=3)
+        m = folium.Map([41, 12], tiles=None, zoom_start=3)
+        folium.TileLayer('cartodbpositron', name='Modern World').add_to(m)
+        m.get_root().title = "MorphoWorld"
+        # HTML title
+        html_element = """<head>
+                          <h3 align="center" style="font-size:14px; background-color: #d4d700">
+                          <b>Interactive world map among various ages, click on one year to see the related world boundaries.<br>
+                          Ages have been divided in 3 color palettes: Blue [up to year 1000], Red [up to year 1880] and Green [XXth century]</b><br>
+                          DISCLAIMER: The GIS data presented in this site was hand-created by students and as such is not guaranteed to be accurate. It is estimated that political boundaries have an average error of 40 miles<br>
+                          Maps DataSource: <a href="http://web.archive.org/web/20080328104539/http://library.thinkquest.org:80/C006628/download.html/"> Link </a>
+                          </h3>
+                          </head>"""
+        m.get_root().html.add_child(folium.Element(html_element))
 
         for idx, key in enumerate(GEOJSONS_SORTED):
             color_idx = simple_rounding(delta_idx_color * idx)
@@ -82,6 +95,7 @@ if __name__ == "__main__":
                                    tooltip=folium.features.GeoJsonTooltip(fields=['NAME'], aliases=['COUNTRY']))
             layer.add_to(m)
             print('Added layer ' + key + ' with color ' + colors[color_idx])
+
         folium.LayerControl(collapsed=False).add_to(m)
 
         output_path = RESULT_FOLDER + '/morphoWorld.html'
