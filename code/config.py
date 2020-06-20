@@ -1,6 +1,10 @@
 EARTH_RADIUS = 6371
 
 RESULT_FOLDER = '../results'
+FLAGS_FOLDER = '../data/flags'
+
+COUNTRIES_CSV = '../data/countries_capitals.csv'
+ECONOMICS_CSV = '../data/countries_economics_data.csv'
 
 GEOJSON_2000BC = '../data/2000bc.geojson'
 GEOJSON_1000BC = '../data/1000bc.geojson'
@@ -22,4 +26,5 @@ GEOJSON_1920 = '../data/1920.geojson'
 GEOJSON_1938 = '../data/1938.geojson'
 GEOJSON_1945 = '../data/1945.geojson'
 GEOJSON_1994 = '../data/1994.geojson'
+GEOJSON_NOW = '../data/now.geojson'
 
