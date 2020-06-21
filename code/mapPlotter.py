@@ -76,11 +76,12 @@ if __name__ == "__main__":
         m.get_root().title = "MorphoWorld"
         # HTML title
         html_element = """<head>
-                          <h3 align="center" style="font-size:14px; background-color: #d4d700">
+                          <h3 align="center" style="font-size:12px; background-color: #d4d700">
                           <b>Interactive world map among various ages, click on one year to see the related world boundaries.<br>
                           Ages have been divided in 3 color palettes: Blue [up to year 1000], Red [up to year 1880] and Green [XXth century]</b><br>
                           DISCLAIMER: The GIS data presented in this site was hand-created by students and as such is not guaranteed to be accurate. It is estimated that political boundaries have an average error of 40 miles<br>
                           Maps DataSource: <a href="http://web.archive.org/web/20080328104539/http://library.thinkquest.org:80/C006628/download.html/"> Link </a>
+                          <p align="center" style="font-size:10px; background-color: #aacc00"; color: white>Developed by Carlo Leone Fanton - <a href="mailto:carlo.fanton92@gmail.com">Click Here To Email Me</a>
                           </h3>
                           </head>"""
         m.get_root().html.add_child(folium.Element(html_element))
