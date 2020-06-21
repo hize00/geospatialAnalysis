@@ -1,5 +1,5 @@
 # geospatialAnalysis
-After reading some Geospatial Analysis tech articles, I discovered how interactive maps can be built in Python thanks to two amazing libraries: Geopandas and Folium.<br>
+After reading some Geospatial Analysis tech articles, I discovered how interactive maps can be built in Python thanks to two amazing libraries: *Geopandas* and *Folium*.<br>
 Being a "geography geek" the topic has immediatly caught my interest, so I've started creating my own geospatial visualizations which I collect in this repository<br>
 
 ## 1. Topologic-Morphing World: how borders evolved through ages
