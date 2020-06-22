@@ -6,7 +6,9 @@ import pandas as pd
 import numpy as np
 import folium
 import sys
-import os, fnmatch
+import os
+import fnmatch
+import io
 import config
 
 FLAGS_FOLDER = config.FLAGS_FOLDER
@@ -21,7 +23,8 @@ economics_df = pd.read_csv(economics_csv)
 geojson_currentWorld = geopandas.read_file(config.GEOJSON_NOW)
 geojson_currentWorld_countries_df = pd.read_csv(couuntries_geojson_csv)
 
-city_icon = '../data/city-icon.png'
+city_icon = r'../data/city-icon.png'
+city_icon = r'../data/city-marker.png'
 
 
 def rename_flags():
@@ -117,12 +120,13 @@ def popup_string_creator(country, capital, population, population_density, gdp, 
         flag_html = encode_img_for_html(flag_path)
     else:
         flag_html = 'N/A'
+    # TODO backgroun color popup
     popup_string = """
                    <b>COUNTRY:</b> {str1}<br>
                    <b>CAPITAL:</b> {str2}<br>
                    <b>POPULATION (million):</b> {str3}<br>
                    <b>POPULATION DENSITY:</b> {str4}<br>
-                   <b>GDP (million$):</b> {str5}<br>
+                   <b>GDP (million $):</b> {str5}<br>
                    <b>GDP PER CAPITA ($):</b> {str6}<br>
                    {str7}
                    """.format(str1=country, str2=capital, str3=str(population),
@@ -135,12 +139,12 @@ if __name__ == "__main__":
     try:
         # rename_flags()
         m = folium.Map([41, 12], tiles=None, zoom_start=3)
-        folium.TileLayer('cartodbpositron', name='Atlantis').add_to(m)
-        m.get_root().title = "Atlantis"
+        folium.TileLayer('cartodbpositron', name='World').add_to(m)
+        m.get_root().title = "Atlas"
         # HTML title
         html_element = """<head>
                       <h3 align="center" style="font-size:14px; background-color: #d4d700">
-                      <b>Atlantis - WORK IN PROGRESS</b></br>
+                      <b>Atlas - WORK IN PROGRESS</b></br>
                       Developer: Carlo Leone Fanton
                       </h3>
                       </head>"""
@@ -148,12 +152,10 @@ if __name__ == "__main__":
 
         COUNTRIES_DICT = create_countries_dict(geojson_currentWorld_countries_df)
 
-        layer = folium.GeoJson(geojson_currentWorld, name='Atlantis', show=False,
-                               style_function=lambda x: {'fillColor': '#43aa8b', 'color': '#43aa8b', 'weight': 2},
-                               tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
+        atlas_layer = folium.GeoJson(geojson_currentWorld, name='Atlas', show=False,
+                                     style_function=lambda x: {'fillColor': '#43aa8b', 'color': '#43aa8b', 'weight': 2},
+                                     tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
 
-        icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(14, 14))
-        # lat, long, name
         for country in COUNTRIES_DICT:
             capital = COUNTRIES_DICT[country]['capital']
             lat = COUNTRIES_DICT[country]['capital_latitude']
@@ -166,12 +168,15 @@ if __name__ == "__main__":
             if lat != 'N/A' and long != 'N/A':
                 popup_string = popup_string_creator(country, capital, population, population_density, gdp, gdp_capita, flag_path)
                 popup = folium.Popup(html=popup_string, max_width=1200)
-                folium.Marker(location=(lat, long), tooltip=country, popup=popup).add_to(m)
-                #folium.CircleMarker(location=(lat, long), tooltip=country, popup=popup, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
+                #folium.Marker(location=(lat, long), tooltip=country, popup=popup).add_to(m)
+                icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(10, 10))
+                folium.Marker(location=(lat, long), tooltip=country, popup=popup, icon=icon).add_to(atlas_layer)
+                #folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
 
-        layer.add_to(m)
+        atlas_layer.add_to(m)
+        folium.LayerControl(collapsed=False).add_to(m)
 
-        output_path = RESULT_FOLDER + '/atlantis.html'
+        output_path = RESULT_FOLDER + '/atlas.html'
         m.save(output_path)
         print("Done")
 
