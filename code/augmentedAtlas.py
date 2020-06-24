@@ -11,6 +11,7 @@ import fnmatch
 import branca
 import mapBinder
 import config
+from folium import GeoJsonPopup
 
 FLAGS_FOLDER = config.FLAGS_FOLDER
 RESULT_FOLDER = config.RESULT_FOLDER
@@ -20,15 +21,35 @@ couuntries_geojson_csv = config.GEOJSON_NOW_COUNTRIES_CSV
 
 countries_df = pd.read_csv(countries_csv)
 economics_df = pd.read_csv(economics_csv)
-# TODO clean datasets
 # print(economics_df.describe())
-economics_df['GDP per capita (current US$)'].replace(-99, np.nan, inplace=True)
+# print(economics_df.dtypes)
+MACROECONOMIC_INDEXES = ['GDP per capita (current US$)', 'GDP: Gross domestic product (million current US$)',
+                         'Economy: Agriculture (% of GVA)', 'Economy: Industry (% of GVA)', 'Economy: Services and other activity (% of GVA)',
+                         'International trade: Imports (million US$)', 'International trade: Exports (million US$)',
+                         'International trade: Balance (million US$)',
+                         'Education: Government expenditure (% of GDP)', 'Individuals using the Internet (per 100 inhabitants)',
+                         'Threatened species (number)', 'Forested area (% of land area)', 'CO2 emission estimates (million tons/tons per capita)',
+                         'Pop. using improved drinking water (urban/rural, %)', 'Pop. using improved sanitation facilities (urban/rural, %)']
 
 geojson_currentWorld = geopandas.read_file(config.GEOJSON_NOW)
 geojson_currentWorld_head = geojson_currentWorld.head(10)
 geojson_currentWorld_countries_df = pd.read_csv(couuntries_geojson_csv)
 
 city_icon = r'../data/city-marker.png'
+
+
+def clean_economics_dataframe(dataframe=economics_df):
+    """
+    Clean the dataframe from non-numeric values in the columns specified which are the ones later analyzed.
+    :param dataframe:
+    :return:
+    """
+
+    for column in MACROECONOMIC_INDEXES:
+        dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
+        dataframe[column].replace(-99, np.nan, inplace=True)
+
+    return dataframe
 
 
 def rename_flags():
@@ -57,6 +78,11 @@ def find_flag_file(pattern, root_path):
 
 
 def extract_df_row_value(df_row):
+    """
+    Extract the value from the dataframe row
+    :param df_row:
+    :return:
+    """
     value = 'N/A'
     if df_row.size > 0:
         value = df_row.values[0]
@@ -67,6 +93,11 @@ def extract_df_row_value(df_row):
 
 
 def create_countries_dict(countries_dataframe):
+    """
+    Create a dict of dict. Primary Key = CountryName. Inner Keys are the macroeconomic indicator extracted from the df with the corresponding values
+    :param countries_dataframe:
+    :return:
+    """
     data = {}
     for country in countries_dataframe.itertuples():
         country_info = {}
@@ -111,6 +142,14 @@ def create_countries_dict(countries_dataframe):
 
 
 def encode_img_for_html(image_path, resolution=75, width=50, height=25):
+    """
+    Encode the image located at @image_path for html embedding
+    :param image_path:
+    :param resolution:
+    :param width:
+    :param height:
+    :return:
+    """
     encode_img = base64.b64encode(open(image_path, 'rb').read())
     html_img_string = '<img src="data:image/png;base64,{}" resolution="' + str(resolution) + '" width="' + str(width) + '" height="' + str(height) + '">'
     html_img = html_img_string.format
@@ -120,11 +159,21 @@ def encode_img_for_html(image_path, resolution=75, width=50, height=25):
 
 
 def popup_string_creator(country, capital, population, population_density, gdp, gdp_capita, flag_path):
+    """
+    Encode the information as html string
+    :param country:
+    :param capital:
+    :param population:
+    :param population_density:
+    :param gdp:
+    :param gdp_capita:
+    :param flag_path:
+    :return:
+    """
     if flag_path != '':
         flag_html = encode_img_for_html(flag_path)
     else:
         flag_html = 'N/A'
-    # TODO backgroun color popup
     popup_string = """
                    <b>COUNTRY:</b> {str1}<br>
                    <b>CAPITAL:</b> {str2}<br>
@@ -140,17 +189,12 @@ def popup_string_creator(country, capital, population, population_density, gdp, 
 
 
 def delete_folium_choropleth_legend(choropleth: folium.Choropleth):
-    """A hack to remove choropleth legends.
+    """
+    A hack to remove choropleth legends. The choropleth color-scaled legend sometimes looks too crowded. Until there is an
+    option to disable the legend, use this routine to remove any color map children from the choropleth.
 
-    The choropleth color-scaled legend sometimes looks too crowded. Until there is an
-    option to disable the legend, use this routine to remove any color map children
-    from the choropleth.
-
-    Args:
-      choropleth: Choropleth objected created by `folium.Choropleth()`
-
-    Returns:
-      The same object `choropleth` with any child whose name starts with
+    :param choropleth: Choropleth objected created by `folium.Choropleth()`
+    :return: The same object `choropleth` with any child whose name starts with
       'color_map' removed.
     """
     del_list = []
@@ -162,20 +206,35 @@ def delete_folium_choropleth_legend(choropleth: folium.Choropleth):
     return choropleth
 
 
-def create_data_layer(layer_name, dataframe, dataframe_column):
-    data_layer = folium.Choropleth(geo_data=geojson_currentWorld,
-                                   data=dataframe,
-                                   columns=dataframe_column,
-                                   key_on='feature.properties.name',
-                                   legend_name=layer_name,
-                                   fill_color='YlOrRd',
-                                   bins=5,
-                                   # threshold_scale=[0, 500, 1500, 5000, 10000, 20000, 30000, 50000, 100000],
-                                   nan_fill_color='black',
-                                   fill_opacity=0.7,
-                                   line_opacity=0.2,
-                                   name=layer_name,
-                                   show=False)
+def create_data_layer(layer_name, legend_color, dataframe, dataframe_column):
+    """
+    Create data layer for macroeconomic indexes visualizations
+    :param layer_name:
+    :param dataframe:
+    :param dataframe_column:
+    :return:
+    """
+    # TODO refactor better this function
+    data_layer = folium.features.Choropleth(geo_data=geojson_currentWorld,
+                                            data=dataframe,
+                                            columns=dataframe_column,
+                                            key_on='feature.properties.name',
+                                            legend_name=layer_name,
+                                            fill_color=legend_color,
+                                            bins=9,
+                                            nan_fill_color='lightgrey',
+                                            fill_opacity=0.7,
+                                            line_opacity=0.2,
+                                            name=layer_name,
+                                            overlay=True,
+                                            highlight=True,
+                                            show=False)
+
+    for f in data_layer.geojson.data['features']:
+        country = f['properties']['name']
+        country_value_df_row = dataframe.loc[dataframe['country'] == country][column_name]
+        country_value = extract_df_row_value(country_value_df_row)
+        f['properties'][layer_name] = country_value
 
     return data_layer
 
@@ -183,14 +242,16 @@ def create_data_layer(layer_name, dataframe, dataframe_column):
 if __name__ == "__main__":
     try:
         # rename_flags()
+        economics_df = clean_economics_dataframe()
         m = folium.Map([41, 12], tiles=None, zoom_start=3)
         folium.TileLayer('cartodbpositron', name='World').add_to(m)
         m.get_root().title = "Atlas"
         # HTML title
         html_element = """<head>
-                      <h3 align="center" style="font-size:14px; background-color: #d4d700">
-                      <b>Atlas - WORK IN PROGRESS</b></br>
-                      Developer: Carlo Leone Fanton
+                      <h3 align="center" style="font-size:14px; background-color: #F9B985">
+                      <b>Digital Atlas</b></br>
+                      Click on a marker to see a country capital, population, population density, GDP, GDP per capita and flag.<br><br>
+                      <p align="center" style="font-size:10px; background-color: #F7F052"; color: white>Developed by Carlo Leone Fanton - <a href="mailto:carlo.fanton92@gmail.com">Click Here To Email Me</a>
                       </h3>
                       </head>"""
         m.get_root().html.add_child(folium.Element(html_element))
@@ -198,7 +259,7 @@ if __name__ == "__main__":
         COUNTRIES_DICT = create_countries_dict(geojson_currentWorld_countries_df)
 
         atlas_layer = folium.GeoJson(geojson_currentWorld, name='Atlas', show=False,
-                                     style_function=lambda x: {'fillColor': '#43aa8b', 'color': '#43aa8b', 'weight': 2},
+                                     style_function=lambda x: {'fillColor': '#C60909', 'color': '#C60909', 'weight': 1},
                                      tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
 
         for country in COUNTRIES_DICT:
@@ -218,16 +279,34 @@ if __name__ == "__main__":
                 # folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
         atlas_layer.add_to(m)
 
+        # TODO refactor better these lines: 283-298
+        # create CHOROPLETH LAYER AND DATA
         column_name = 'GDP per capita (current US$)'
         column_values = economics_df[column_name]
-        population_layer = create_data_layer('GDP per capita', economics_df, ['country', column_name])
-        population_layer.add_to(m)
-        #delete_folium_choropleth_legend(population_layer.add_to(m))
+        choropleth_colors = 'YlOrRd'
+        choropleth_layer = create_data_layer('GDP per capita', choropleth_colors, economics_df, ['country', column_name])
+        folium.GeoJsonTooltip(fields=['GDP per capita']).add_to(choropleth_layer.geojson)
+        delete_folium_choropleth_legend(choropleth_layer.add_to(m))
+
+        vmin = min(economics_df[column_name])
+        vmax = max(economics_df[column_name])
+        colormap_colors = ['white', '#FBFCBF', 'yellow', 'orange', 'red']
+        cm1 = branca.colormap.LinearColormap(colormap_colors, vmin=vmin, vmax=vmax, caption='GDP per capita')
+
+        m.add_child(choropleth_layer)
+        m.add_child(cm1)
+        m.add_child(mapBinder.BindColormap(choropleth_layer, cm1))
+
+
+        # LAYER CONTROL
         folium.LayerControl(collapsed=False).add_to(m)
 
-        output_path = RESULT_FOLDER + '/atlas.html'
+        output_path = RESULT_FOLDER + '/augmented_atlas.html'
         m.save(output_path)
         print("Done")
+
+        # choropleth_map.add_to(m)
+        # delete_folium_choropleth_legend(choropleth_map.add_to(m))
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()

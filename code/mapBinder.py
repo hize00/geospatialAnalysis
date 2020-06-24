@@ -27,3 +27,4 @@ class BindColormap(MacroElement):
                 }});
         {% endmacro %}
         """)  # noqa
+
