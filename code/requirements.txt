@@ -3,3 +3,4 @@ pandas
 folium
 geopandas
 matplotlib
+vincent

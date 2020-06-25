@@ -9,6 +9,8 @@ import sys
 import os
 import fnmatch
 import branca
+import vincent
+import json
 import mapBinder
 import config
 from folium import GeoJsonPopup
@@ -23,6 +25,12 @@ countries_df = pd.read_csv(countries_csv)
 economics_df = pd.read_csv(economics_csv)
 # print(economics_df.describe())
 # print(economics_df.dtypes)
+geojson_currentWorld = geopandas.read_file(config.GEOJSON_NOW)
+geojson_currentWorld_head = geojson_currentWorld.head(10)
+geojson_currentWorld_countries_df = pd.read_csv(couuntries_geojson_csv)
+
+city_icon = r'../data/city-marker.png'
+
 MACROECONOMIC_INDEXES = ['GDP per capita (current US$)', 'GDP: Gross domestic product (million current US$)',
                          'Economy: Agriculture (% of GVA)', 'Economy: Industry (% of GVA)', 'Economy: Services and other activity (% of GVA)',
                          'International trade: Imports (million US$)', 'International trade: Exports (million US$)',
@@ -31,11 +39,25 @@ MACROECONOMIC_INDEXES = ['GDP per capita (current US$)', 'GDP: Gross domestic pr
                          'Threatened species (number)', 'Forested area (% of land area)', 'CO2 emission estimates (million tons/tons per capita)',
                          'Pop. using improved drinking water (urban/rural, %)', 'Pop. using improved sanitation facilities (urban/rural, %)']
 
-geojson_currentWorld = geopandas.read_file(config.GEOJSON_NOW)
-geojson_currentWorld_head = geojson_currentWorld.head(10)
-geojson_currentWorld_countries_df = pd.read_csv(couuntries_geojson_csv)
+MACROECONOMIC_LAYER_DICT = {
+    'SimpleLayer': [
+        dict(layer_name='Economy: GDP per capita (US$)',
+             df_column_name='GDP per capita (current US$)',
+             choropleth_color='YlOrRd',
+             legend_color=['white', '#FBFCBF', 'yellow', 'orange', 'red']),
+        dict(layer_name='Environment: C02 emissions (tons)',
+             df_column_name='CO2 emission estimates (million tons/tons per capita)',
+             choropleth_color='YlGnBu',
+             legend_color=['white', 'green', 'blue']),
+        dict(layer_name='Environment: Threatened Species',
+             df_column_name='Threatened species (number)',
+             choropleth_color='RdPu',
+             legend_color=['white', '#fde0dd', '#fa9fb5', 'purple'])
+    ],
+    'ComplexLayer': [
 
-city_icon = r'../data/city-marker.png'
+    ]
+}
 
 
 def clean_economics_dataframe(dataframe=economics_df):
@@ -44,6 +66,8 @@ def clean_economics_dataframe(dataframe=economics_df):
     :param dataframe:
     :return:
     """
+    # clean string columns
+    dataframe['Forested area (% of land area)'] = dataframe['Forested area (% of land area)'].str.split('/').str[1]
 
     for column in MACROECONOMIC_INDEXES:
         dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
@@ -206,7 +230,8 @@ def delete_folium_choropleth_legend(choropleth: folium.Choropleth):
     return choropleth
 
 
-def create_data_layer(layer_name, legend_color, dataframe, dataframe_column):
+def create_data_layer(layer_name, layer_color, dataframe, dataframe_column_key,
+                      dataframe_column, legend_color, map):
     """
     Create data layer for macroeconomic indexes visualizations
     :param layer_name:
@@ -214,13 +239,12 @@ def create_data_layer(layer_name, legend_color, dataframe, dataframe_column):
     :param dataframe_column:
     :return:
     """
-    # TODO refactor better this function
     data_layer = folium.features.Choropleth(geo_data=geojson_currentWorld,
                                             data=dataframe,
-                                            columns=dataframe_column,
+                                            columns=dataframe_column_key,
                                             key_on='feature.properties.name',
                                             legend_name=layer_name,
-                                            fill_color=legend_color,
+                                            fill_color=layer_color,
                                             bins=9,
                                             nan_fill_color='lightgrey',
                                             fill_opacity=0.7,
@@ -229,12 +253,27 @@ def create_data_layer(layer_name, legend_color, dataframe, dataframe_column):
                                             overlay=True,
                                             highlight=True,
                                             show=False)
-
+    # add data to geojson property
     for f in data_layer.geojson.data['features']:
         country = f['properties']['name']
-        country_value_df_row = dataframe.loc[dataframe['country'] == country][column_name]
+        country_value_df_row = dataframe.loc[dataframe['country'] == country][dataframe_column]
         country_value = extract_df_row_value(country_value_df_row)
         f['properties'][layer_name] = country_value
+    # create tooltip
+    tooltip_layer_desc = layer_name
+    if ':' not in tooltip_layer_desc:
+        tooltip_layer_desc = ':' + tooltip_layer_desc
+    tooltip_layer_desc = tooltip_layer_desc.split(':')[1]
+    folium.GeoJsonTooltip(fields=['name', layer_name], aliases=['COUNTRY', tooltip_layer_desc]).add_to(data_layer.geojson)
+    delete_folium_choropleth_legend(data_layer.add_to(m))
+    # create colormap
+    vmin = min(economics_df[dataframe_column])
+    vmax = max(economics_df[dataframe_column])
+    layer_legend = branca.colormap.LinearColormap(legend_color, vmin=vmin, vmax=vmax, caption=layer_name)
+    # bind colormap with chorpleth_layer
+    m.add_child(data_layer)
+    m.add_child(layer_legend)
+    m.add_child(mapBinder.BindColormap(data_layer, layer_legend))
 
     return data_layer
 
@@ -278,24 +317,43 @@ if __name__ == "__main__":
                 folium.Marker(location=(lat, long), tooltip=country, popup=popup, icon=icon).add_to(atlas_layer)
                 # folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
         atlas_layer.add_to(m)
-
-        # TODO refactor better these lines: 283-298
+        """
         # create CHOROPLETH LAYER AND DATA
+        # GDP per Capita
         column_name = 'GDP per capita (current US$)'
         column_values = economics_df[column_name]
         choropleth_colors = 'YlOrRd'
-        choropleth_layer = create_data_layer('GDP per capita', choropleth_colors, economics_df, ['country', column_name])
-        folium.GeoJsonTooltip(fields=['GDP per capita']).add_to(choropleth_layer.geojson)
-        delete_folium_choropleth_legend(choropleth_layer.add_to(m))
-
-        vmin = min(economics_df[column_name])
-        vmax = max(economics_df[column_name])
-        colormap_colors = ['white', '#FBFCBF', 'yellow', 'orange', 'red']
-        cm1 = branca.colormap.LinearColormap(colormap_colors, vmin=vmin, vmax=vmax, caption='GDP per capita')
-
-        m.add_child(choropleth_layer)
-        m.add_child(cm1)
-        m.add_child(mapBinder.BindColormap(choropleth_layer, cm1))
+        legend_colors = ['white', '#FBFCBF', 'yellow', 'orange', 'red']
+        choropleth_layer = create_data_layer('Economy: GDP per capita (US$)', choropleth_colors, economics_df, ['country', column_name],
+                                             legend_colors, m)
+        """
+        """
+        for layer in MACROECONOMIC_LAYER_DICT['SimpleLayer']:
+            layer_name = layer['layer_name']
+            column_name = layer['df_column_name']
+            column_values = economics_df[column_name]
+            choropleth_colors = layer['choropleth_color']
+            legend_colors = layer['legend_color']
+            choropleth_layer = create_data_layer(layer_name, choropleth_colors, economics_df, ['country', column_name],
+                                                 column_name,legend_colors, m)
+        """
+        a_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Agriculture (% of GVA)']
+        a = extract_df_row_value(a_row)
+        b_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Industry (% of GVA)']
+        b = extract_df_row_value(b_row)
+        c_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Services and other activity (% of GVA)']
+        c = extract_df_row_value(c_row)
+        pie_data = {'Agriculture: ' + str(a) + '%': a, 'Industry: ' + str(b) + '%': b, 'Services: ' + str(c) + '%': c}
+        pie = vincent.Pie(pie_data, outer_radius=50)
+        pie.width = 50
+        pie.height = 50
+        pie.legend('Economic Sectors')
+        pie_json_data = json.loads(pie.to_json())
+        p = folium.Popup('hello', max_width=1200)
+        v = folium.features.Vega(pie_json_data, width='100%', height='100%')
+        p.add_child(v)
+        mk = folium.features.Marker([41, 12], popup=p)
+        mk.add_to(m)
 
 
         # LAYER CONTROL
@@ -304,9 +362,6 @@ if __name__ == "__main__":
         output_path = RESULT_FOLDER + '/augmented_atlas.html'
         m.save(output_path)
         print("Done")
-
-        # choropleth_map.add_to(m)
-        # delete_folium_choropleth_legend(choropleth_map.add_to(m))
 
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
