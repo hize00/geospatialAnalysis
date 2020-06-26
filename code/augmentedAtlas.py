@@ -11,6 +11,7 @@ import fnmatch
 import branca
 import vincent
 import json
+from typing import List
 import mapBinder
 import config
 from folium import GeoJsonPopup
@@ -35,8 +36,8 @@ MACROECONOMIC_INDEXES = ['GDP per capita (current US$)', 'GDP: Gross domestic pr
                          'Economy: Agriculture (% of GVA)', 'Economy: Industry (% of GVA)', 'Economy: Services and other activity (% of GVA)',
                          'International trade: Imports (million US$)', 'International trade: Exports (million US$)',
                          'International trade: Balance (million US$)',
-                         'Education: Government expenditure (% of GDP)', 'Individuals using the Internet (per 100 inhabitants)',
-                         'Threatened species (number)', 'Forested area (% of land area)', 'CO2 emission estimates (million tons/tons per capita)',
+                         'Education: Government expenditure (% of GDP)',
+                         'Threatened species (number)', 'CO2 emission estimates (million tons/tons per capita)',
                          'Pop. using improved drinking water (urban/rural, %)', 'Pop. using improved sanitation facilities (urban/rural, %)']
 
 MACROECONOMIC_LAYER_DICT = {
@@ -45,14 +46,22 @@ MACROECONOMIC_LAYER_DICT = {
              df_column_name='GDP per capita (current US$)',
              choropleth_color='YlOrRd',
              legend_color=['white', '#FBFCBF', 'yellow', 'orange', 'red']),
+        dict(layer_name='Economy: International trade balance (million US$)',
+             df_column_name='International trade: Balance (million US$)',
+             choropleth_color='PuRd',
+             legend_color=['white', '#e7e1ef', '#c994c7', '#dd1c77', 'purple']),
         dict(layer_name='Environment: C02 emissions (tons)',
              df_column_name='CO2 emission estimates (million tons/tons per capita)',
              choropleth_color='YlGnBu',
-             legend_color=['white', 'green', 'blue']),
+             legend_color=['white', '#edf8b1', '#7fcdbb', 'green', 'blue']),
         dict(layer_name='Environment: Threatened Species',
              df_column_name='Threatened species (number)',
              choropleth_color='RdPu',
-             legend_color=['white', '#fde0dd', '#fa9fb5', 'purple'])
+             legend_color=['white', '#fde0dd', '#fa9fb5', 'purple']),
+        dict(layer_name='Education: Government expenditure (% of GDP)',
+             df_column_name='Education: Government expenditure (% of GDP)',
+             choropleth_color='PuBuGn',
+             legend_color=['white', '#ece2f0', '#a6bddb', '#1c9099'])
     ],
     'ComplexLayer': [
 
@@ -67,7 +76,7 @@ def clean_economics_dataframe(dataframe=economics_df):
     :return:
     """
     # clean string columns
-    dataframe['Forested area (% of land area)'] = dataframe['Forested area (% of land area)'].str.split('/').str[1]
+    # dataframe['Forested area (% of land area)'] = dataframe['Forested area (% of land area)'].str.split('/').str[1]
 
     for column in MACROECONOMIC_INDEXES:
         dataframe[column] = pd.to_numeric(dataframe[column], errors='coerce')
@@ -230,8 +239,8 @@ def delete_folium_choropleth_legend(choropleth: folium.Choropleth):
     return choropleth
 
 
-def create_data_layer(layer_name, layer_color, dataframe, dataframe_column_key,
-                      dataframe_column, legend_color, map):
+def create_choropleth_data_layer(layer_name, layer_color, dataframe, dataframe_column_key,
+                                 dataframe_column, legend_color, map):
     """
     Create data layer for macroeconomic indexes visualizations
     :param layer_name:
@@ -239,20 +248,13 @@ def create_data_layer(layer_name, layer_color, dataframe, dataframe_column_key,
     :param dataframe_column:
     :return:
     """
-    data_layer = folium.features.Choropleth(geo_data=geojson_currentWorld,
-                                            data=dataframe,
-                                            columns=dataframe_column_key,
-                                            key_on='feature.properties.name',
-                                            legend_name=layer_name,
-                                            fill_color=layer_color,
-                                            bins=9,
-                                            nan_fill_color='lightgrey',
-                                            fill_opacity=0.7,
-                                            line_opacity=0.2,
-                                            name=layer_name,
-                                            overlay=True,
-                                            highlight=True,
-                                            show=False)
+    data_layer = folium.features.Choropleth(geo_data=geojson_currentWorld, data=dataframe,
+                                            columns=dataframe_column_key, key_on='feature.properties.name',
+                                            legend_name=layer_name, fill_color=layer_color,
+                                            bins=9, nan_fill_color='lightgrey',
+                                            fill_opacity=0.7, line_opacity=0.2,
+                                            name=layer_name, overlay=True,
+                                            highlight=True, show=False)
     # add data to geojson property
     for f in data_layer.geojson.data['features']:
         country = f['properties']['name']
@@ -278,17 +280,48 @@ def create_data_layer(layer_name, layer_color, dataframe, dataframe_column_key,
     return data_layer
 
 
+def create_industryPie_layer(dataframe):
+    layer = folium.GeoJson(geojson_currentWorld, name='Economic Sectors', show=False,
+                           style_function=lambda x: {'fillColor': 'yellow', 'color': 'yellow', 'weight': 1},
+                           tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
+
+    for country in COUNTRIES_DICT:
+        v = None
+        lat = COUNTRIES_DICT[country]['capital_latitude']
+        long = COUNTRIES_DICT[country]['capital_longitude']
+        agriculture_row = dataframe.loc[dataframe['country'] == country]['Economy: Agriculture (% of GVA)']
+        agriculture = extract_df_row_value(agriculture_row)
+        industry_row = dataframe.loc[dataframe['country'] == country]['Economy: Industry (% of GVA)']
+        industry = extract_df_row_value(industry_row)
+        services_row = dataframe.loc[dataframe['country'] == country]['Economy: Services and other activity (% of GVA)']
+        services = extract_df_row_value(services_row)
+        pie_data = {'Agriculture: ' + str(agriculture) + '%': agriculture, 'Industry: ' + str(industry) + '%': industry, 'Services: ' + str(services) + '%': services}
+        pie = vincent.Pie(pie_data, outer_radius=50)
+        pie.width = 50
+        pie.height = 50
+        pie.legend('Economic Sectors')
+        pie_json_data = json.loads(pie.to_json())
+        if lat != 'N/A' and long != 'N/A':
+            p = folium.Popup('', max_width=1200)
+            v = folium.features.Vega(pie_json_data, width='100%', height='100%')
+            p.add_child(v)
+            icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(10, 10))
+            folium.Marker(location=(lat, long), tooltip=country, popup=p, icon=icon).add_to(layer)
+
+    return layer
+
+
 if __name__ == "__main__":
     try:
         # rename_flags()
         economics_df = clean_economics_dataframe()
         m = folium.Map([41, 12], tiles=None, zoom_start=3)
         folium.TileLayer('cartodbpositron', name='World').add_to(m)
-        m.get_root().title = "Atlas"
+        m.get_root().title = "SIC MUNDUS EST"
         # HTML title
         html_element = """<head>
                       <h3 align="center" style="font-size:14px; background-color: #F9B985">
-                      <b>Digital Atlas</b></br>
+                      <b>SIC MUNDUS EST</b></br>
                       Click on a marker to see a country capital, population, population density, GDP, GDP per capita and flag.<br><br>
                       <p align="center" style="font-size:10px; background-color: #F7F052"; color: white>Developed by Carlo Leone Fanton - <a href="mailto:carlo.fanton92@gmail.com">Click Here To Email Me</a>
                       </h3>
@@ -317,49 +350,23 @@ if __name__ == "__main__":
                 folium.Marker(location=(lat, long), tooltip=country, popup=popup, icon=icon).add_to(atlas_layer)
                 # folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
         atlas_layer.add_to(m)
-        """
-        # create CHOROPLETH LAYER AND DATA
-        # GDP per Capita
-        column_name = 'GDP per capita (current US$)'
-        column_values = economics_df[column_name]
-        choropleth_colors = 'YlOrRd'
-        legend_colors = ['white', '#FBFCBF', 'yellow', 'orange', 'red']
-        choropleth_layer = create_data_layer('Economy: GDP per capita (US$)', choropleth_colors, economics_df, ['country', column_name],
-                                             legend_colors, m)
-        """
-        """
+
         for layer in MACROECONOMIC_LAYER_DICT['SimpleLayer']:
             layer_name = layer['layer_name']
             column_name = layer['df_column_name']
             column_values = economics_df[column_name]
             choropleth_colors = layer['choropleth_color']
             legend_colors = layer['legend_color']
-            choropleth_layer = create_data_layer(layer_name, choropleth_colors, economics_df, ['country', column_name],
+            choropleth_layer = create_choropleth_data_layer(layer_name, choropleth_colors, economics_df, ['country', column_name],
                                                  column_name,legend_colors, m)
-        """
-        a_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Agriculture (% of GVA)']
-        a = extract_df_row_value(a_row)
-        b_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Industry (% of GVA)']
-        b = extract_df_row_value(b_row)
-        c_row = economics_df.loc[economics_df['country'] == 'Italy']['Economy: Services and other activity (% of GVA)']
-        c = extract_df_row_value(c_row)
-        pie_data = {'Agriculture: ' + str(a) + '%': a, 'Industry: ' + str(b) + '%': b, 'Services: ' + str(c) + '%': c}
-        pie = vincent.Pie(pie_data, outer_radius=50)
-        pie.width = 50
-        pie.height = 50
-        pie.legend('Economic Sectors')
-        pie_json_data = json.loads(pie.to_json())
-        p = folium.Popup('hello', max_width=1200)
-        v = folium.features.Vega(pie_json_data, width='100%', height='100%')
-        p.add_child(v)
-        mk = folium.features.Marker([41, 12], popup=p)
-        mk.add_to(m)
 
+        industryPie_layer = create_industryPie_layer(economics_df)
+        industryPie_layer.add_to(m)
 
         # LAYER CONTROL
-        folium.LayerControl(collapsed=False).add_to(m)
+        folium.LayerControl(collapsed=True).add_to(m)
 
-        output_path = RESULT_FOLDER + '/augmented_atlas.html'
+        output_path = RESULT_FOLDER + '/sicMundus.html'
         m.save(output_path)
         print("Done")
 
