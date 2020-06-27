@@ -10,4 +10,12 @@ The cool idea behind this visualization is that we can understand better and eas
 
 ## 2. Sic Mundus Est: digital atlas augmented with UN macroeconomic information
 **DIGITAL ATLAS GITHUB PAGE:** [digitalAtlas](https://hize00.github.io/geospatialAnalysis/digitalAtlas.html)<br>
+I love geography, since I was little I was fascinated by the shapes of countries and the history behind them and their borders. I know by heart the majority of capitals and flags (but I can't remember what I ate last night...) so the creation of a digital Atlas is lots of fun for me (Python + Geography: perfect match!)<br>
+In order to create a digital Atlas I've downloaded a list of countries capitals with their latitude and longitude and 
+
+**Data sources**<br>
+- Capitals with latitude and longitude: [Kaggle](https://www.kaggle.com/nikitagrec/world-capitals-gps)<br>
+- Flags: [Flagpedia](https://flagpedia.net/download) 
+
 **AUGMENTED ATLAS GITHUB PAGE:** [augmentedAtlas](https://hize00.github.io/geospatialAnalysis/sicMundus.html)<br>
+blabla
