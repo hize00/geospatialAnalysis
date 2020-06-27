@@ -15,7 +15,7 @@ In order to create a digital Atlas I've downloaded a list of countries capitals 
 
 **Data sources**<br>
 - Capitals with latitude and longitude: [Kaggle](https://www.kaggle.com/nikitagrec/world-capitals-gps)<br>
-- Flags: [Flagpedia](https://flagpedia.net/download) 
-<br>
+- Flags: [Flagpedia](https://flagpedia.net/download) <br>
+
 **AUGMENTED ATLAS GITHUB PAGE:** [augmentedAtlas](https://hize00.github.io/geospatialAnalysis/sicMundus.html)<br>
 blabla
