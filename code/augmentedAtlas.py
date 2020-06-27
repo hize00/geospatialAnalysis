@@ -322,7 +322,10 @@ if __name__ == "__main__":
         html_element = """<head>
                       <h3 align="center" style="font-size:14px; background-color: #F9B985">
                       <b>SIC MUNDUS EST</b></br>
-                      Click on a marker to see a country capital, population, population density, GDP, GDP per capita and flag.<br><br>
+                      Click on a layer to see macroeconomic data related to countries.<br>
+                      Click on markers to see details related to that visualization.<br>
+                      <b>NOTE:</b> this project is still work in progress, some refinements are still needed. At the moment it is a draft of the final outcome.<br>
+                      <br>
                       <p align="center" style="font-size:10px; background-color: #F7F052"; color: white>Developed by Carlo Leone Fanton - <a href="mailto:carlo.fanton92@gmail.com">Click Here To Email Me</a>
                       </h3>
                       </head>"""
@@ -349,7 +352,7 @@ if __name__ == "__main__":
                 icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(10, 10))
                 folium.Marker(location=(lat, long), tooltip=country, popup=popup, icon=icon).add_to(atlas_layer)
                 # folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
-        atlas_layer.add_to(m)
+        # atlas_layer.add_to(m)
 
         for layer in MACROECONOMIC_LAYER_DICT['SimpleLayer']:
             layer_name = layer['layer_name']
@@ -364,7 +367,7 @@ if __name__ == "__main__":
         industryPie_layer.add_to(m)
 
         # LAYER CONTROL
-        folium.LayerControl(collapsed=True).add_to(m)
+        folium.LayerControl(collapsed=False).add_to(m)
 
         output_path = RESULT_FOLDER + '/sicMundus.html'
         m.save(output_path)
