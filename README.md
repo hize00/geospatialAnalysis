@@ -8,7 +8,7 @@ In this visualization we can see how countries borders evolved over time among d
 The cool idea behind this visualization is that we can understand better and easier how borders changed through time and this could be appealing in different areas of study such as history, geography and geo-politics overall.
 <br>
 
-## 2. Sic Mundus Est: digital atlas augmented with UN macroeconomic information
+## 2. Sic Mundus Est: digital atlas enriched with UN macroeconomic indexes
 I love geography. Since I was little I was fascinated by the shapes of countries and the history behind them and their borders. I know by heart the majority of capitals and flags (I can't remember what I ate last night though...) so coming up with the idea of creating of a customized digital Atlas was a challenging project but at the same time entertaining (Python + Geography: perfect match!)<br>
 In order to create a digital Atlas I've downloaded a list of countries capitals with their latitude and longitude and a list of flags. Then I've downloaded the annual sociopolitical report of the United Nations with a list of macroeconomic indexes such as GDP, GDP per capita, International Trade Balance, Education Spendings and many more.<br>
 I've preprocessed the data in order to make the countries' names coherent with the countries present in the geojson file. At this point there are 4 datasets:<br>
