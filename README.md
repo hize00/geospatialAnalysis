@@ -11,22 +11,21 @@ The cool idea behind this visualization is that we can understand better and eas
 ## 2. Sic Mundus Est: digital atlas enriched with UN macroeconomic indexes
 I love geography. Since I was little I was fascinated by the shapes of countries and the history behind them and their borders. I know by heart the majority of capitals and flags (I can't remember what I ate last night though...) so coming up with the idea of creating of a customized digital Atlas was a challenging project but at the same time entertaining (Python + Geography: perfect match!)<br>
 In order to create a digital Atlas I've downloaded a list of countries capitals with their latitude and longitude and a list of flags. Then I've downloaded the annual sociopolitical report of the United Nations with a list of macroeconomic indexes such as GDP, GDP per capita, International Trade Balance, Education Spendings and many more.<br>
-I've preprocessed the data in order to make the countries' names coherent with the countries present in the geojson file. At this point there are 4 datasets, connected by the same key: the country name (which the preprocessing phase assured to be equal accross all 4 of them) <br>
+I've preprocessed the data in order to make the countries' names coherent with the countries present in the geojson file.<br>
+At this point there are 4 datasets, connected by the same key: the *country name* (which the preprocessing phase assured to be equal accross all 4 of them) <br>
 1. Geojson file of the world
 2. Flags files
 3. Dataset with countries capitals with latitude and longitude
-4. Dataset with macroeconomic indexes <br><br>
+4. Dataset with macroeconomic indexes <br>
 
 The next step was to aggregate and structure the data and building geospatial visualizations on top of that, exploiting *folium* library potentials.<br>
 The visualizations created are freely accessible in the following *github pages*:<br>
-
 **DIGITAL ATLAS GITHUB PAGE:** [digitalAtlas](https://hize00.github.io/geospatialAnalysis/digitalAtlas.html)<br>
 **AUGMENTED ATLAS GITHUB PAGE:** [augmentedAtlas](https://hize00.github.io/geospatialAnalysis/sicMundus.html)<br>
 
 **Data sources**<br>
+- Geojson: [carto.com](https://rtr.carto.com/tables/world_countries_geojson/public)
+- Flags: [Flagpedia](https://flagpedia.net/download) <br>
 - Capitals with latitude and longitude: [Kaggle](https://www.kaggle.com/nikitagrec/world-capitals-gps)<br>
 - Countries macroeconomic indexes: [Kaggle](https://www.kaggle.com/sudalairajkumar/undata-country-profiles)
-- Flags: [Flagpedia](https://flagpedia.net/download) <br>
-- Geojson: [carto.com](https://rtr.carto.com/tables/world_countries_geojson/public)
-
 
