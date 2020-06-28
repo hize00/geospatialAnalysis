@@ -15,7 +15,7 @@ I've preprocessed the data in order to make the countries' names coherent with t
 1. Geojson file of the world
 2. Flags files
 3. Dataset with countries capitals with latitude and longitude
-4. Dataset with macroeconomic indexes
+4. Dataset with macroeconomic indexes <br>
 The 4 datasets are connected by the same key, the country name (which the preprocessing phase assured to be equal accross all 4 of them)<br><br>
 
 The next step was to aggregate and structure the data and building geospatial visualizations on top of that, exploiting *folium* library potentials.<br>
