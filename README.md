@@ -20,6 +20,7 @@ At this point there are 4 datasets, connected by the same key: the *country name
 
 The next step was to aggregate and structure the data and building geospatial visualizations on top of that, exploiting *folium* library potentials.<br>
 The visualizations created are freely accessible in the following *github pages*:<br>
+
 **DIGITAL ATLAS GITHUB PAGE:** [digitalAtlas](https://hize00.github.io/geospatialAnalysis/digitalAtlas.html)<br>
 **AUGMENTED ATLAS GITHUB PAGE:** [augmentedAtlas](https://hize00.github.io/geospatialAnalysis/sicMundus.html)<br>
 
