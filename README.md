@@ -30,5 +30,5 @@ The visualizations created are freely accessible in the following *github pages*
 - Capitals with latitude and longitude: [Kaggle](https://www.kaggle.com/nikitagrec/world-capitals-gps)<br>
 - Countries macroeconomic indexes: [Kaggle](https://www.kaggle.com/sudalairajkumar/undata-country-profiles)<br><br>
 
-♫♫♫ *Code has been developed while listening to **[Skinshape](https://open.spotify.com/artist/1itM5tXaK5THggpXA7ovAe)** * ♫♫♫
+♫♫♫ *Code has been developed while listening to* **[Skinshape](https://open.spotify.com/artist/1itM5tXaK5THggpXA7ovAe)** ♫♫♫
 
