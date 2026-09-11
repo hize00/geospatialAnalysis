@@ -1,6 +1,7 @@
-import base64
 import traceback
 import math
+import re
+import shutil
 import geopandas
 import pandas as pd
 import numpy as np
@@ -30,7 +31,13 @@ geojson_currentWorld = geopandas.read_file(config.GEOJSON_NOW)
 geojson_currentWorld_head = geojson_currentWorld.head(10)
 geojson_currentWorld_countries_df = pd.read_csv(couuntries_geojson_csv)
 
-city_icon = r'../data/city-marker.png'
+CITY_ICON_SIZE = 10
+CITY_ICON_ACCENT = '#444440'
+city_icon = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='{s}' height='{s}' "
+    "viewBox='0 0 {s} {s}'%3E%3Ccircle cx='{c}' cy='{c}' r='3.5' fill='%23{color}' "
+    "stroke='%23ffffff' stroke-width='1.2'/%3E%3C/svg%3E"
+).format(s=CITY_ICON_SIZE, c=CITY_ICON_SIZE / 2, color=CITY_ICON_ACCENT.lstrip('#'))
 
 MACROECONOMIC_INDEXES = ['GDP per capita (current US$)', 'GDP: Gross domestic product (million current US$)',
                          'Economy: Agriculture (% of GVA)', 'Economy: Industry (% of GVA)', 'Economy: Services and other activity (% of GVA)',
@@ -174,26 +181,68 @@ def create_countries_dict(countries_dataframe):
     return data
 
 
-def encode_img_for_html(image_path, resolution=75, width=50, height=25):
+def safe_flag_filename(country_name):
+    name = re.sub(r'[^A-Za-z0-9_\- ]+', '', country_name).strip()
+    return re.sub(r'\s+', '_', name) + '.png'
+
+
+def flag_relative_path(flag_image_abs_path, country_name):
     """
-    Encode the image located at @image_path for html embedding
-    :param image_path:
-    :param resolution:
-    :param width:
-    :param height:
-    :return:
+    Copy the flag image into RESULT_FOLDER/flags so popups can reference it by URL
+    instead of embedding it as base64 (keeps the generated HTML small and lets the
+    browser cache one flag file across every popup that needs it).
+    :param flag_image_abs_path:
+    :param country_name:
+    :return: path relative to the generated HTML file, or '' if no flag was found
     """
-    encode_img = base64.b64encode(open(image_path, 'rb').read())
-    html_img_string = '<img src="data:image/png;base64,{}" resolution="' + str(resolution) + '" width="' + str(width) + '" height="' + str(height) + '">'
-    html_img = html_img_string.format
-    # html_img = '<img src="data:image/png;base64,{}" resolution="75" width="50" height="25">'.format
-    img = html_img(encode_img.decode('UTF-8'))
-    return img
+    if not flag_image_abs_path:
+        return ''
+    flags_out_dir = os.path.join(RESULT_FOLDER, 'flags')
+    os.makedirs(flags_out_dir, exist_ok=True)
+    fname = safe_flag_filename(country_name)
+    dest = os.path.join(flags_out_dir, fname)
+    if not os.path.exists(dest):
+        shutil.copyfile(flag_image_abs_path, dest)
+    return 'flags/' + fname
+
+
+def format_number(value, decimals=0):
+    """
+    Format a numeric value with thousands separators, or None if it's missing/non-numeric.
+    """
+    if value is None or value == 'N/A':
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return '{:,.{}f}'.format(value, decimals)
+
+
+def format_population(value_millions):
+    """
+    Format a population expressed in millions:
+    - under 1M: show in thousands, e.g. 850K
+    - 1M-10M: 2 decimals, e.g. 2.25M (1 decimal would round too coarsely at this scale)
+    - 10M and up: 1 decimal, e.g. 59.4M
+    """
+    if value_millions is None or value_millions == 'N/A':
+        return None
+    try:
+        value_millions = float(value_millions)
+    except (TypeError, ValueError):
+        return str(value_millions)
+    if value_millions < 1:
+        return '{:,.0f}K'.format(value_millions * 1000)
+    if value_millions < 10:
+        return '{:,.2f}M'.format(value_millions)
+    return '{:,.1f}M'.format(value_millions)
 
 
 def popup_string_creator(country, capital, population, population_density, gdp, gdp_capita, flag_path):
     """
-    Encode the information as html string
+    Build a compact popup card (flag, capital, stat grid) matching the site's dark theme,
+    instead of a flat key/value list with a base64-embedded flag.
     :param country:
     :param capital:
     :param population:
@@ -203,20 +252,34 @@ def popup_string_creator(country, capital, population, population_density, gdp, 
     :param flag_path:
     :return:
     """
-    if flag_path != '':
-        flag_html = encode_img_for_html(flag_path)
+    flag_rel = flag_relative_path(flag_path, country)
+    if flag_rel:
+        flag_html = '<img class="mundus-flag" src="{}" alt="{} flag" loading="lazy">'.format(flag_rel, country)
     else:
-        flag_html = 'N/A'
-    popup_string = """
-                   <b>COUNTRY:</b> {str1}<br>
-                   <b>CAPITAL:</b> {str2}<br>
-                   <b>POPULATION (million):</b> {str3}<br>
-                   <b>POPULATION DENSITY:</b> {str4}<br>
-                   <b>GDP (million $):</b> {str5}<br>
-                   <b>GDP PER CAPITA ($):</b> {str6}<br>
-                   {str7}
-                   """.format(str1=country, str2=capital, str3=str(population),
-                              str4=str(population_density), str5=str(gdp), str6=str(gdp_capita), str7=flag_html)
+        flag_html = '<div class="mundus-flag mundus-flag-empty"></div>'
+
+    capital_line = capital if capital and capital != 'N/A' else 'Capital unknown'
+
+    stats = [
+        ('Population', format_population(population), ''),
+        ('Density', format_number(population_density, 1), '/km&sup2;'),
+        ('GDP', format_number(gdp, 0), 'M$'),
+        ('GDP / capita', format_number(gdp_capita, 0), '$'),
+    ]
+    stats_html = ''.join(
+        '<div class="mundus-stat"><span class="mundus-stat-label">{}</span>'
+        '<span class="mundus-stat-value">{}{}</span></div>'.format(label, value, unit)
+        for label, value, unit in stats if value is not None
+    )
+
+    popup_string = (
+        '<div class="mundus-popup">'
+        '<div class="mundus-popup-head">{flag}'
+        '<div class="mundus-popup-heading"><div class="mundus-country">{country}</div>'
+        '<div class="mundus-capital">{capital}</div></div></div>'
+        '<div class="mundus-stats">{stats}</div>'
+        '</div>'
+    ).format(flag=flag_html, country=country, capital=capital_line, stats=stats_html)
 
     return popup_string
 
@@ -282,7 +345,8 @@ def create_choropleth_data_layer(layer_name, layer_color, dataframe, dataframe_c
 
 def create_industryPie_layer(dataframe):
     layer = folium.GeoJson(geojson_currentWorld, name='Economic Sectors', show=False,
-                           style_function=lambda x: {'fillColor': 'yellow', 'color': 'yellow', 'weight': 1},
+                           style_function=lambda x: {'color': '#8a8a86', 'fillColor': '#000000',
+                                                      'weight': 0.6, 'opacity': 0.25, 'fillOpacity': 0.03},
                            tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
 
     for country in COUNTRIES_DICT:
@@ -305,7 +369,8 @@ def create_industryPie_layer(dataframe):
             p = folium.Popup('', max_width=1200)
             v = folium.features.Vega(pie_json_data, width='100%', height='100%')
             p.add_child(v)
-            icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(10, 10))
+            icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(CITY_ICON_SIZE, CITY_ICON_SIZE),
+                                              icon_anchor=(CITY_ICON_SIZE // 2, CITY_ICON_SIZE // 2))
             folium.Marker(location=(lat, long), tooltip=country, popup=p, icon=icon).add_to(layer)
 
     return layer
@@ -316,25 +381,93 @@ if __name__ == "__main__":
         # rename_flags()
         economics_df = clean_economics_dataframe()
         m = folium.Map([41, 12], tiles=None, zoom_start=3)
-        folium.TileLayer('cartodbpositron', name='World').add_to(m)
+        folium.TileLayer(
+            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+            attr='Tiles &copy; Esri — Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community',
+            max_zoom=16,
+            name='World').add_to(m)
         m.get_root().title = "SIC MUNDUS EST"
-        # HTML title
-        html_element = """<head>
-                      <h3 align="center" style="font-size:14px; background-color: #F9B985">
-                      <b>SIC MUNDUS EST</b></br>
-                      Click on a layer to see macroeconomic data related to countries.<br>
-                      Click on markers to see details related to that visualization.<br>
-                      <b>NOTE:</b> this project is still work in progress, some refinements are still needed. At the moment it is a draft of the final outcome.<br>
-                      <br>
-                      <p align="center" style="font-size:10px; background-color: #F7F052"; color: white>Developed by Carlo Leone Fanton - <a href="mailto:carlo.fanton92@gmail.com">Click Here To Email Me</a>
-                      </h3>
-                      </head>"""
-        m.get_root().html.add_child(folium.Element(html_element))
+        # HTML title: glass-panel header injected into <head> (styles) and <body> (markup)
+        head_element = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root{ --glow-bg: rgba(17,24,39,.72); --glow-border: rgba(255,255,255,.14); --glow-accent: #c60909; --glow-text: #f4f6fb; --glow-muted: #b7c0d8; }
+    .glow-panel{position:fixed;top:16px;left:16px;z-index:1000;max-width:380px;background:var(--glow-bg);border:1px solid var(--glow-border);border-radius:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 12px 32px rgba(0,0,0,.35);color:var(--glow-text);font-family:'Inter',-apple-system,sans-serif;transition:all .25s ease;overflow:hidden;}
+    .glow-panel.collapsed .glow-body{display:none;}
+    .glow-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;cursor:pointer;border-bottom:1px solid transparent;}
+    .glow-panel:not(.collapsed) .glow-panel-head{border-bottom-color:var(--glow-border);}
+    .glow-title{font-size:15px;font-weight:700;letter-spacing:.2px;margin:0;}
+    .glow-accent{color:var(--glow-accent);}
+    .glow-toggle{background:none;border:none;color:var(--glow-muted);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px;}
+    .glow-body{padding:4px 14px 12px;font-size:12.5px;line-height:1.5;color:var(--glow-muted);}
+    .glow-body b{color:var(--glow-text);}
+    .glow-body a{color:var(--glow-accent);}
+    .glow-hub-link{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--glow-muted);text-decoration:none;padding:10px 14px 0;}
+    .glow-hub-link:hover{color:var(--glow-text);}
+    .glow-footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--glow-border);font-size:10.5px;color:var(--glow-muted);}
+    .glow-footer a{color:var(--glow-accent);text-decoration:none;}
+    .glow-footer a:hover{text-decoration:underline;}
+    @media (max-width:520px){.glow-panel{left:8px;right:8px;top:8px;max-width:none;}}
+    .legend{background:var(--glow-bg) !important;border:1px solid var(--glow-border) !important;border-radius:10px !important;padding:8px 14px 4px !important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 8px 24px rgba(0,0,0,.3) !important;}
+    .legend .caption{fill:var(--glow-text) !important;font-family:'Inter',-apple-system,sans-serif !important;font-size:11px !important;}
+    .legend .tick text{fill:var(--glow-muted) !important;font-family:'Inter',-apple-system,sans-serif !important;font-size:10px !important;}
+    .legend .tick line{stroke:var(--glow-border) !important;}
+    .legend path.domain{stroke:var(--glow-border) !important;}
+    .leaflet-popup-content-wrapper{background:var(--glow-bg);color:var(--glow-text);border:1px solid var(--glow-border);border-radius:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 12px 32px rgba(0,0,0,.35);}
+    .leaflet-popup-tip{background:rgba(17,24,39,.85);}
+    .leaflet-popup-content{margin:0;}
+    .leaflet-popup-close-button{color:var(--glow-muted) !important;}
+    .mundus-popup{font-family:'Inter',-apple-system,sans-serif;padding:12px 14px;min-width:200px;}
+    .mundus-popup-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+    .mundus-flag{width:36px;height:24px;object-fit:cover;border-radius:3px;border:1px solid var(--glow-border);flex-shrink:0;}
+    .mundus-flag-empty{width:36px;height:24px;border-radius:3px;border:1px dashed var(--glow-border);flex-shrink:0;}
+    .mundus-country{font-size:14px;font-weight:700;color:var(--glow-text);line-height:1.25;}
+    .mundus-capital{font-size:11.5px;color:var(--glow-muted);}
+    .mundus-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
+    .mundus-stat{display:flex;flex-direction:column;gap:1px;}
+    .mundus-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--glow-muted);}
+    .mundus-stat-value{font-size:13px;font-weight:600;color:var(--glow-text);}
+</style>"""
+        m.get_root().header.add_child(folium.Element(head_element))
+
+        body_element = """
+<div class="glow-panel" id="glowPanel">
+    <a class="glow-hub-link" href="index.html">&larr; All visualizations</a>
+    <div class="glow-panel-head" onclick="var p=this.parentElement;p.classList.toggle('collapsed');this.querySelector('.glow-toggle').textContent=p.classList.contains('collapsed')?'+':'−';">
+        <p class="glow-title">Sic <span class="glow-accent">Mundus</span> Est</p>
+        <button class="glow-toggle" aria-label="toggle">&minus;</button>
+    </div>
+    <div class="glow-body">
+        Toggle a macroeconomic <b>layer</b> to color the world by that metric, then click a marker for the full country breakdown.
+        <br><br>
+        <span style="opacity:.8">Work in progress &mdash; some layers are still rough drafts.</span>
+    </div>
+</div>"""
+        m.get_root().html.add_child(folium.Element(body_element))
+
+        # Move the zoom control out from under the glass header panel (top-left) to bottom-left.
+        zoom_position_script = """
+(function(){
+    function init(){
+        for (var k in window) {
+            if (/^map_/.test(k) && window[k] && window[k].zoomControl) {
+                window[k].zoomControl.setPosition('bottomleft');
+            }
+        }
+    }
+    if (document.readyState === 'complete') { setTimeout(init, 0); }
+    else { window.addEventListener('load', init); }
+})();
+"""
+        m.get_root().script.add_child(folium.Element(zoom_position_script))
 
         COUNTRIES_DICT = create_countries_dict(geojson_currentWorld_countries_df)
 
         atlas_layer = folium.GeoJson(geojson_currentWorld, name='Atlas', show=False,
-                                     style_function=lambda x: {'fillColor': '#C60909', 'color': '#C60909', 'weight': 1},
+                                     style_function=lambda x: {'color': '#8a8a86', 'fillColor': '#000000',
+                                                                'weight': 0.6, 'opacity': 0.25, 'fillOpacity': 0.03},
                                      tooltip=folium.features.GeoJsonTooltip(fields=['name'], aliases=['COUNTRY']))
 
         for country in COUNTRIES_DICT:
@@ -349,7 +482,8 @@ if __name__ == "__main__":
             if lat != 'N/A' and long != 'N/A':
                 popup_string = popup_string_creator(country, capital, population, population_density, gdp, gdp_capita, flag_path)
                 popup = folium.Popup(html=popup_string, max_width=1200)
-                icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(10, 10))
+                icon = folium.features.CustomIcon(icon_image=city_icon, icon_size=(CITY_ICON_SIZE, CITY_ICON_SIZE),
+                                              icon_anchor=(CITY_ICON_SIZE // 2, CITY_ICON_SIZE // 2))
                 folium.Marker(location=(lat, long), tooltip=country, popup=popup, icon=icon).add_to(atlas_layer)
                 # folium.CircleMarker(location=(lat, long), tooltip=country, radius=5, weight=3, color='red', fillcolor='red').add_to(m)
         # atlas_layer.add_to(m)

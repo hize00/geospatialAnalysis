@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>geospatialAnalysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root{
+        --bg: #14140f;
+        --text: #d6d4cd;
+        --muted: #83817a;
+        --border: #262620;
+        --border-strong: #3a382f;
+        --accent-topo: #d4d700;
+        --accent-atlas: #f48c06;
+        --accent-sic: #c60909;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;}
+    body{
+        background: var(--bg);
+        color: var(--text);
+        font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+        min-height:100vh;
+    }
+    .wrap{ max-width: 720px; margin: 0 auto; padding: 72px 24px 48px; }
+    .kicker{
+        font-family:'IBM Plex Mono',monospace;
+        font-size:12px; letter-spacing:.04em; color: var(--muted);
+        margin: 0 0 28px;
+    }
+    h1{
+        font-size: 26px; font-weight: 600; line-height:1.3; margin:0 0 14px;
+        letter-spacing:-.01em;
+    }
+    .lede{
+        font-size:15px; color: var(--muted); line-height:1.65; margin: 0 0 56px;
+        max-width: 46em;
+    }
+    .list{ border-top:1px solid var(--border); }
+    .item{
+        display:flex; gap:20px; align-items:baseline;
+        padding: 22px 0;
+        border-bottom:1px solid var(--border);
+        text-decoration:none; color:inherit;
+    }
+    .item:hover{ background: rgba(255,255,255,.025); }
+    .item:hover .arrow{ transform: translateX(3px); opacity:1; }
+    .item.topo .item-title{ color: color-mix(in srgb, var(--accent-topo) 60%, var(--bg)); }
+    .item.atlas .item-title{ color: color-mix(in srgb, var(--accent-atlas) 60%, var(--bg)); }
+    .item.sic .item-title{ color: color-mix(in srgb, var(--accent-sic) 60%, var(--bg)); }
+    .item-index{
+        font-family:'IBM Plex Mono',monospace; font-size:12px; color: var(--muted);
+        width: 22px; flex-shrink:0; padding-top:3px;
+    }
+    .item-body{ flex:1; min-width:0; }
+    .item-title{
+        display:flex; align-items:center; gap:10px;
+        font-size:16px; font-weight:600; margin:0 0 6px; color: var(--text);
+        transition: color .15s ease;
+    }
+    .item-tag{
+        font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:400;
+        color: var(--muted); text-transform:uppercase; letter-spacing:.04em;
+    }
+    .item-desc{ font-size:13.5px; color: var(--muted); line-height:1.55; margin:0; max-width:52em; }
+    .arrow{
+        font-size:14px; color: var(--muted); opacity:.5; flex-shrink:0; align-self:center;
+        transition: transform .15s ease, opacity .15s ease;
+    }
+    footer{
+        margin-top:48px; padding-top:20px;
+        font-size:12.5px; color: var(--muted);
+        display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    footer a{ color: var(--muted); text-decoration:underline; text-decoration-color: var(--border-strong); text-underline-offset:2px; }
+    footer a:hover{ color: var(--text); text-decoration-color: var(--text); }
+    @media (max-width: 520px){
+        .item{ gap:12px; }
+        .item-index{ width:18px; }
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <p class="kicker">Geospatial Analysis &middot;</p>
+    <h1>A small atlas of interactive maps.</h1>
+    <p class="lede">Three visualizations built on top of open geospatial data: borders shifting across four millennia, every country's capital in one atlas, and a macroeconomic snapshot of today's world.</p>
+
+    <div class="list">
+        <a class="item topo" href="topoMorphingWorld.html">
+            <span class="item-index">01</span>
+            <span class="item-body">
+                <p class="item-title">MorphoWorld <span class="item-tag">History</span></p>
+                <p class="item-desc">National borders across 18 eras, from 2000&nbsp;BC to today.</p>
+            </span>
+            <span class="arrow">&rarr;</span>
+        </a>
+        <a class="item atlas" href="digitalAtlas.html">
+            <span class="item-index">02</span>
+            <span class="item-body">
+                <p class="item-title">Digital Atlas <span class="item-tag">GEOGRAPHY</span></p>
+                <p class="item-desc">Every capital, with its flag, population, density, GDP and GDP per capita.</p>
+            </span>
+            <span class="arrow">&rarr;</span>
+        </a>
+        <a class="item sic" href="sicMundus.html">
+            <span class="item-index">03</span>
+            <span class="item-body">
+                <p class="item-title">Sic Mundus Est <span class="item-tag">Macroeconomics</span></p>
+                <p class="item-desc">Choropleth layers for GDP, trade balance, CO&#8322; emissions, education spend and more.</p>
+            </span>
+            <span class="arrow">&rarr;</span>
+        </a>
+    </div>
+
+    <footer>June 2020</footer>
+</div>
+</body>
+</html>
